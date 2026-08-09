@@ -3,6 +3,7 @@
 **Migrate your dbt project to Dataform (BigQuery) in one command.**
 
 [![CI](https://github.com/ZinelabidineCh/dbt-to-dataform-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/ZinelabidineCh/dbt-to-dataform-cli/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/dbt-to-dataform-cli.svg)](https://pypi.org/project/dbt-to-dataform-cli/)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
