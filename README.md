@@ -1,5 +1,8 @@
 # dbt-to-dataform-cli
 
+[![CI](https://github.com/ZinelabidineCh/dbt-to-dataform-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/ZinelabidineCh/dbt-to-dataform-cli/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Convert a [dbt](https://www.getdbt.com/) project into a
 [Dataform](https://cloud.google.com/dataform) (BigQuery) project — from the
 command line.
@@ -122,7 +125,12 @@ python -m venv .venv
 .venv/Scripts/activate        # Windows
 pip install -e ".[dev]"
 pytest
+ruff check src tests
 ```
+
+CI runs on every push/PR to `main` ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)):
+lint (ruff), tests across Python 3.9–3.12 on Linux and Windows, then a
+package build + `twine check` to catch anything that would break `pip install`.
 
 ## Roadmap
 

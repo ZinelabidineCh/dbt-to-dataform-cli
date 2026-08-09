@@ -37,17 +37,25 @@ dependencies = [
 dev = [
     "pytest>=7.4",
     "pytest-cov>=4.1",
+    "ruff>=0.6",
 ]
 
 [project.scripts]
 dbt-to-dataform = "dbt_to_dataform.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/zchiguer/dbt-to-dataform-cli"
-Issues = "https://github.com/zchiguer/dbt-to-dataform-cli/issues"
+Homepage = "https://github.com/ZinelabidineCh/dbt-to-dataform-cli"
+Issues = "https://github.com/ZinelabidineCh/dbt-to-dataform-cli/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/dbt_to_dataform"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP"]

@@ -130,8 +130,12 @@ def _print_summary(report: MigrationReport, output_dir: Path, dry_run: bool) -> 
     console.print(table)
 
     if report.sources and report.sources.declared:
-        status = "[green]OK[/green]" if not report.sources.warnings else f"[yellow]{len(report.sources.warnings)} warning(s)[/yellow]"
-        console.print(f"Sources: declared {len(report.sources.declared)} table(s) in {report.sources.output_path} -- {status}")
+        n_warnings = len(report.sources.warnings)
+        status = "[green]OK[/green]" if not n_warnings else f"[yellow]{n_warnings} warning(s)[/yellow]"
+        console.print(
+            f"Sources: declared {len(report.sources.declared)} table(s) "
+            f"in {report.sources.output_path} -- {status}"
+        )
 
     if dry_run:
         console.print("[cyan]Dry run: no files written.[/cyan]")
