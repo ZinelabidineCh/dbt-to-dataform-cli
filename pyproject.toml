@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dbt-to-dataform-cli"
+version = "0.1.0"
+description = "Convert a dbt project into a Dataform (BigQuery) project, from the command line."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [
+    { name = "Zinelabidine Chiguer" },
+]
+keywords = ["dbt", "dataform", "bigquery", "data-engineering", "cli", "migration", "gcp"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Database",
+]
+dependencies = [
+    "click>=8.1",
+    "PyYAML>=6.0",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+]
+
+[project.scripts]
+dbt-to-dataform = "dbt_to_dataform.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/zchiguer/dbt-to-dataform-cli"
+Issues = "https://github.com/zchiguer/dbt-to-dataform-cli/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dbt_to_dataform"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
