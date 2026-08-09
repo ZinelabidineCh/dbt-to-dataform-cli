@@ -55,6 +55,31 @@ def discover_models(project: DbtProject) -> list[Path]:
     return files
 
 
+def load_sources(project: DbtProject) -> tuple[list[dict[str, Any]], list[Path]]:
+    """Find and parse every ``sources:`` block declared in a YAML file under
+    the project's model-paths (dbt allows it in a dedicated sources.yml or
+    mixed into any schema.yml). Returns (source_defs, files_that_had_one)."""
+    source_defs: list[dict[str, Any]] = []
+    matched_files: list[Path] = []
+
+    for model_path in project.model_paths:
+        base = project.root / model_path
+        if not base.exists():
+            continue
+        yml_files = sorted(base.rglob("*.yml")) + sorted(base.rglob("*.yaml"))
+        for yml_file in yml_files:
+            try:
+                data = yaml.safe_load(yml_file.read_text(encoding="utf-8")) or {}
+            except yaml.YAMLError:
+                continue
+            sources = data.get("sources") if isinstance(data, dict) else None
+            if sources:
+                source_defs.extend(sources)
+                matched_files.append(yml_file)
+
+    return source_defs, matched_files
+
+
 def relative_to_models_root(project: DbtProject, model_file: Path) -> Path:
     """Path of a model relative to whichever model-path directory contains it,
     e.g. models/staging/stg_orders.sql -> staging/stg_orders.sql."""

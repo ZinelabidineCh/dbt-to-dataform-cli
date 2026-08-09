@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .converters.sql_to_sqlx import ConversionWarning
+from .warnings import ConversionWarning
 
 
 @dataclass
@@ -18,11 +18,23 @@ class ModelReport:
 
 
 @dataclass
+class SourcesReport:
+    output_path: str = ""
+    source_files: list[str] = field(default_factory=list)
+    declared: list[str] = field(default_factory=list)
+    warnings: list[ConversionWarning] = field(default_factory=list)
+
+
+@dataclass
 class MigrationReport:
     models: list[ModelReport] = field(default_factory=list)
+    sources: SourcesReport | None = None
 
     def add(self, model_report: ModelReport) -> None:
         self.models.append(model_report)
+
+    def set_sources(self, sources_report: SourcesReport) -> None:
+        self.sources = sources_report
 
     @property
     def clean(self) -> list[ModelReport]:
@@ -61,5 +73,22 @@ class MigrationReport:
                 lines.append("")
         else:
             lines.append("_None._")
+
+        lines += ["", "## Sources", ""]
+        if self.sources is None or not self.sources.declared:
+            lines.append("_No `sources.yml` found -- nothing to convert._")
+        else:
+            files = ", ".join(f"`{f}`" for f in self.sources.source_files)
+            lines.append(
+                f"Declared {len(self.sources.declared)} source table(s) in "
+                f"`{self.sources.output_path}` from {files}:"
+            )
+            lines.append("")
+            for name in self.sources.declared:
+                lines.append(f"- `{name}`")
+            if self.sources.warnings:
+                lines += ["", "Needs manual review:", ""]
+                for w in self.sources.warnings:
+                    lines.append(f"- {w.message}")
 
         return "\n".join(lines) + "\n"

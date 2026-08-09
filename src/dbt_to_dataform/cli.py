@@ -9,9 +9,17 @@ from rich.console import Console
 from rich.table import Table
 
 from . import __version__
+from .converters.sources_to_js import convert as convert_sources
 from .converters.sql_to_sqlx import convert as convert_sql
-from .project import DbtProjectError, discover_models, load_dbt_project, relative_to_models_root, resolve_model_config
-from .report import MigrationReport, ModelReport
+from .project import (
+    DbtProjectError,
+    discover_models,
+    load_dbt_project,
+    load_sources,
+    relative_to_models_root,
+    resolve_model_config,
+)
+from .report import MigrationReport, ModelReport, SourcesReport
 from .writer import write_text
 
 console = Console()
@@ -75,6 +83,21 @@ def convert(input_dir: Path, output_dir: Path, dry_run: bool) -> None:
             )
         )
 
+    source_defs, source_files = load_sources(project)
+    if source_defs:
+        sources_result = convert_sources(source_defs)
+        sources_out_path = Path("definitions") / "sources.js"
+        if not dry_run:
+            write_text(output_dir / sources_out_path, sources_result.js)
+        report.set_sources(
+            SourcesReport(
+                output_path=str(sources_out_path).replace("\\", "/"),
+                source_files=[str(f.relative_to(input_dir)).replace("\\", "/") for f in source_files],
+                declared=sources_result.declared,
+                warnings=sources_result.warnings,
+            )
+        )
+
     if not dry_run:
         write_text(output_dir / "MIGRATION_REPORT.md", report.to_markdown())
 
@@ -90,6 +113,10 @@ def _print_summary(report: MigrationReport, output_dir: Path, dry_run: bool) -> 
         status = "[green]OK[/green]" if not m.warnings else f"[yellow]{len(m.warnings)} warning(s)[/yellow]"
         table.add_row(m.name, m.materialized, status)
     console.print(table)
+
+    if report.sources and report.sources.declared:
+        status = "[green]OK[/green]" if not report.sources.warnings else f"[yellow]{len(report.sources.warnings)} warning(s)[/yellow]"
+        console.print(f"Sources: declared {len(report.sources.declared)} table(s) in {report.sources.output_path} -- {status}")
 
     if dry_run:
         console.print("[cyan]Dry run: no files written.[/cyan]")

@@ -6,6 +6,7 @@ from dbt_to_dataform.project import (
     DbtProjectError,
     discover_models,
     load_dbt_project,
+    load_sources,
     resolve_model_config,
 )
 
@@ -65,3 +66,27 @@ def test_subfolder_overrides_project_materialization(dbt_project_dir: Path):
     model_file = dbt_project_dir / "models" / "staging" / "stg_customers.sql"
     config = resolve_model_config(project, model_file)
     assert config["materialized"] == "view"
+
+
+def test_load_sources_returns_empty_when_none_declared(dbt_project_dir: Path):
+    project = load_dbt_project(dbt_project_dir)
+    source_defs, files = load_sources(project)
+    assert source_defs == []
+    assert files == []
+
+
+def test_load_sources_parses_sources_yml(dbt_project_dir: Path):
+    sources_yml = """
+sources:
+  - name: ecom
+    schema: raw
+    tables:
+      - name: raw_customers
+"""
+    (dbt_project_dir / "models" / "sources.yml").write_text(sources_yml, encoding="utf-8")
+
+    project = load_dbt_project(dbt_project_dir)
+    source_defs, files = load_sources(project)
+    assert len(source_defs) == 1
+    assert source_defs[0]["name"] == "ecom"
+    assert len(files) == 1

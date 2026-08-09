@@ -23,13 +23,9 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from ..warnings import ConversionWarning
+
 # --- data types -------------------------------------------------------
-
-@dataclass
-class ConversionWarning:
-    message: str
-    snippet: str = ""
-
 
 @dataclass
 class ConversionResult:

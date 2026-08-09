@@ -28,7 +28,7 @@ Makefile, or CI pipeline. This is.
 | `models/**/*.sql` with `{{ ref(...) }}` | `definitions/**/*.sqlx` with `${ref(...)}` | ✅ implemented |
 | Materialization config (`table`/`view`/`incremental`) from `dbt_project.yml` and inline `{{ config(...) }}` | `config { type: ... }` block | ✅ implemented |
 | `{{ source(...) }}` | `${ref(...)}` | ✅ implemented (flagged for review — verify the source declaration) |
-| `sources.yml` | `sources.js` declarations | 🚧 planned |
+| `sources.yml` | `sources.js` declarations | ✅ implemented |
 | `unique` / `not_null` tests in `schema.yml` | `uniqueKey` / `nonNull` assertions | 🚧 planned |
 | Migration report (what needs manual review) | `MIGRATION_REPORT.md` | ✅ implemented |
 
@@ -59,8 +59,24 @@ my_dataform_project/
       ...
     customers.sqlx
     orders.sqlx
+    sources.js          # only written if the dbt project has a sources.yml
   MIGRATION_REPORT.md
 ```
+
+### Sources
+
+Every source table declared under `sources:` in any `schema.yml`/`sources.yml`
+becomes a `declare({...})` block in `definitions/sources.js`, keyed by the
+dbt source table's `name:` — matching what `{{ source(...) }}` calls get
+rewritten to in the converted models. Two things are flagged for manual
+review rather than converted automatically:
+
+- **`identifier:` overrides** — Dataform's `declare()` has no separate
+  alias concept, so the physical table name is used as `name:`, and you'll
+  need to update the generated `${ref(...)}` call in the model(s) that used
+  to reference it by its dbt name.
+- **`freshness:` checks** — Dataform has no built-in equivalent; recreate
+  with a custom assertion if you rely on them.
 
 ## Trying it on a real project
 
@@ -84,7 +100,7 @@ pytest
 ## Roadmap
 
 1. ✅ Model `.sql` -> `.sqlx` conversion, materialization config
-2. 🚧 `sources.yml` -> `sources.js`
+2. ✅ `sources.yml` -> `sources.js`
 3. 🚧 `schema.yml` tests (`unique`, `not_null`) -> assertions
 4. 🚧 Richer migration report (HTML output)
 
