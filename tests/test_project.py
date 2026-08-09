@@ -6,6 +6,7 @@ from dbt_to_dataform.project import (
     DbtProjectError,
     discover_models,
     load_dbt_project,
+    load_model_tests,
     load_sources,
     resolve_model_config,
 )
@@ -90,3 +91,30 @@ sources:
     assert len(source_defs) == 1
     assert source_defs[0]["name"] == "ecom"
     assert len(files) == 1
+
+
+def test_load_model_tests_returns_empty_when_no_schema_yml(dbt_project_dir: Path):
+    project = load_dbt_project(dbt_project_dir)
+    model_tests, files = load_model_tests(project)
+    assert model_tests == {}
+    assert files == []
+
+
+def test_load_model_tests_parses_columns_and_tests(dbt_project_dir: Path):
+    schema_yml = """
+models:
+  - name: customers
+    columns:
+      - name: customer_id
+        tests:
+          - unique
+          - not_null
+      - name: first_name
+"""
+    (dbt_project_dir / "models" / "schema.yml").write_text(schema_yml, encoding="utf-8")
+
+    project = load_dbt_project(dbt_project_dir)
+    model_tests, files = load_model_tests(project)
+    assert len(files) == 1
+    assert [c["name"] for c in model_tests["customers"]] == ["customer_id", "first_name"]
+    assert model_tests["customers"][0]["tests"] == ["unique", "not_null"]

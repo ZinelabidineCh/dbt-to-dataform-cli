@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 import yaml
 
@@ -55,13 +55,10 @@ def discover_models(project: DbtProject) -> list[Path]:
     return files
 
 
-def load_sources(project: DbtProject) -> tuple[list[dict[str, Any]], list[Path]]:
-    """Find and parse every ``sources:`` block declared in a YAML file under
-    the project's model-paths (dbt allows it in a dedicated sources.yml or
-    mixed into any schema.yml). Returns (source_defs, files_that_had_one)."""
-    source_defs: list[dict[str, Any]] = []
-    matched_files: list[Path] = []
-
+def _iter_yaml_docs(project: DbtProject) -> Iterator[tuple[Path, dict[str, Any]]]:
+    """Yield (path, parsed_dict) for every YAML file under the project's
+    model-paths that parses to a mapping (schema.yml, sources.yml, and any
+    file mixing both live here)."""
     for model_path in project.model_paths:
         base = project.root / model_path
         if not base.exists():
@@ -72,12 +69,46 @@ def load_sources(project: DbtProject) -> tuple[list[dict[str, Any]], list[Path]]
                 data = yaml.safe_load(yml_file.read_text(encoding="utf-8")) or {}
             except yaml.YAMLError:
                 continue
-            sources = data.get("sources") if isinstance(data, dict) else None
-            if sources:
-                source_defs.extend(sources)
-                matched_files.append(yml_file)
+            if isinstance(data, dict):
+                yield yml_file, data
+
+
+def load_sources(project: DbtProject) -> tuple[list[dict[str, Any]], list[Path]]:
+    """Find and parse every ``sources:`` block declared in a YAML file under
+    the project's model-paths (dbt allows it in a dedicated sources.yml or
+    mixed into any schema.yml). Returns (source_defs, files_that_had_one)."""
+    source_defs: list[dict[str, Any]] = []
+    matched_files: list[Path] = []
+
+    for yml_file, data in _iter_yaml_docs(project):
+        sources = data.get("sources")
+        if sources:
+            source_defs.extend(sources)
+            matched_files.append(yml_file)
 
     return source_defs, matched_files
+
+
+def load_model_tests(project: DbtProject) -> tuple[dict[str, list[dict[str, Any]]], list[Path]]:
+    """Find and parse every model's ``columns:`` block declared under
+    ``models:`` in a schema.yml. Returns
+    ``{model_name: [{"name": col, "tests": [...]}]}`` and the files it came
+    from."""
+    model_columns: dict[str, list[dict[str, Any]]] = {}
+    matched_files: list[Path] = []
+
+    for yml_file, data in _iter_yaml_docs(project):
+        models = data.get("models")
+        if not models:
+            continue
+        matched_files.append(yml_file)
+        for model in models:
+            name = model.get("name")
+            if not name:
+                continue
+            model_columns[name] = model.get("columns") or []
+
+    return model_columns, matched_files
 
 
 def relative_to_models_root(project: DbtProject, model_file: Path) -> Path:

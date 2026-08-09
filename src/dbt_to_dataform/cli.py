@@ -11,10 +11,12 @@ from rich.table import Table
 from . import __version__
 from .converters.sources_to_js import convert as convert_sources
 from .converters.sql_to_sqlx import convert as convert_sql
+from .converters.tests_to_assertions import convert as convert_tests
 from .project import (
     DbtProjectError,
     discover_models,
     load_dbt_project,
+    load_model_tests,
     load_sources,
     relative_to_models_root,
     resolve_model_config,
@@ -46,9 +48,10 @@ def main() -> None:
 def convert(input_dir: Path, output_dir: Path, dry_run: bool) -> None:
     """Convert models in INPUT_DIR (a dbt project) to Dataform .sqlx files.
 
-    Currently converts model .sql files only (models -> definitions/*.sqlx).
-    Sources and tests conversion are planned next -- see the migration
-    report for what still needs manual work.
+    Converts model .sql files (models -> definitions/*.sqlx), sources.yml
+    (-> definitions/sources.js), and unique/not_null column tests from
+    schema.yml (-> assertions in each model's config block). See the
+    migration report for what still needs manual work.
     """
     try:
         project = load_dbt_project(input_dir)
@@ -60,10 +63,22 @@ def convert(input_dir: Path, output_dir: Path, dry_run: bool) -> None:
         console.print(f"[yellow]No .sql models found under {project.model_paths} in {input_dir}[/yellow]")
         raise SystemExit(1)
 
+    model_tests, _test_files = load_model_tests(project)
+
     report = MigrationReport()
 
     for model_file in model_files:
         model_config = resolve_model_config(project, model_file)
+        model_name = model_file.stem
+
+        assertion_warnings = []
+        columns = model_tests.get(model_name)
+        if columns:
+            assertions_result = convert_tests(columns)
+            if assertions_result.assertions:
+                model_config["assertions"] = assertions_result.assertions
+            assertion_warnings = assertions_result.warnings
+
         sql_text = model_file.read_text(encoding="utf-8")
         result = convert_sql(sql_text, model_config)
 
@@ -75,11 +90,11 @@ def convert(input_dir: Path, output_dir: Path, dry_run: bool) -> None:
 
         report.add(
             ModelReport(
-                name=model_file.stem,
+                name=model_name,
                 source_path=str(model_file.relative_to(input_dir)).replace("\\", "/"),
                 output_path=str(Path("definitions") / rel_path).replace("\\", "/"),
                 materialized=result.config.get("materialized", "view"),
-                warnings=result.warnings,
+                warnings=result.warnings + assertion_warnings,
             )
         )
 

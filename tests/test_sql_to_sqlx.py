@@ -67,6 +67,27 @@ def test_unknown_materialization_defaults_to_view_with_warning():
     assert any("ephemeral" in w.message for w in result.warnings)
 
 
+def test_assertions_are_rendered_inside_config_block():
+    sql = "select * from x"
+    model_config = {
+        "materialized": "table",
+        "assertions": {"uniqueKey": ["customer_id"], "nonNull": ["customer_id", "first_name"]},
+    }
+    result = convert(sql, model_config)
+    assert "assertions: {" in result.sqlx
+    assert 'uniqueKey: ["customer_id"]' in result.sqlx
+    assert 'nonNull: ["customer_id", "first_name"]' in result.sqlx
+    # the assertions block nests inside the single top-level config {} block
+    assert result.sqlx.count("config {") == 1
+
+
+def test_multiple_config_properties_are_comma_separated():
+    sql = "select 1"
+    result = convert(sql, {"materialized": "incremental", "unique_key": "order_id", "tags": ["nightly"]})
+    assert 'type: "incremental",' in result.sqlx
+    assert 'uniqueKey: "order_id",' in result.sqlx
+
+
 def test_jinja_comments_are_stripped():
     sql = "{#- a dbt-only comment -#}\nselect 1"
     result = convert(sql, {"materialized": "view"})

@@ -29,7 +29,7 @@ Makefile, or CI pipeline. This is.
 | Materialization config (`table`/`view`/`incremental`) from `dbt_project.yml` and inline `{{ config(...) }}` | `config { type: ... }` block | ✅ implemented |
 | `{{ source(...) }}` | `${ref(...)}` | ✅ implemented (flagged for review — verify the source declaration) |
 | `sources.yml` | `sources.js` declarations | ✅ implemented |
-| `unique` / `not_null` tests in `schema.yml` | `uniqueKey` / `nonNull` assertions | 🚧 planned |
+| `unique` / `not_null` tests in `schema.yml` | `uniqueKey` / `nonNull` assertions | ✅ implemented |
 | Migration report (what needs manual review) | `MIGRATION_REPORT.md` | ✅ implemented |
 
 Out of scope for the MVP: dbt packages (`dbt_utils`, ...), complex Jinja
@@ -78,6 +78,33 @@ review rather than converted automatically:
 - **`freshness:` checks** — Dataform has no built-in equivalent; recreate
   with a custom assertion if you rely on them.
 
+### Tests
+
+`unique` and `not_null` column tests in `schema.yml` are converted into an
+`assertions: { ... }` block nested inside the model's `config { ... }`:
+
+```
+config {
+  type: "table",
+  assertions: {
+    uniqueKey: ["customer_id"],
+    nonNull: ["customer_id"]
+  }
+}
+```
+
+- `not_null` on multiple columns all collect into one `nonNull` array —
+  each check is independent, so this is a direct, lossless mapping.
+- `unique` is trickier: Dataform's `assertions.uniqueKey` is a **single
+  composite key per model**, while dbt lets every column carry its own
+  independent `unique` test. If more than one column has a `unique` test,
+  only the first is converted automatically; the rest are flagged for
+  manual review (they need their own separate assertion definition).
+- Anything beyond `unique`/`not_null` — `accepted_values`, `relationships`,
+  custom generic tests, dbt package tests (`dbt_utils`, `dbt_expectations`,
+  ...) — is explicitly out of MVP scope and flagged in the migration
+  report rather than silently dropped.
+
 ## Trying it on a real project
 
 This repo is validated against [jaffle_shop](https://github.com/dbt-labs/jaffle-shop),
@@ -101,7 +128,7 @@ pytest
 
 1. ✅ Model `.sql` -> `.sqlx` conversion, materialization config
 2. ✅ `sources.yml` -> `sources.js`
-3. 🚧 `schema.yml` tests (`unique`, `not_null`) -> assertions
+3. ✅ `schema.yml` tests (`unique`, `not_null`) -> assertions
 4. 🚧 Richer migration report (HTML output)
 
 ## License

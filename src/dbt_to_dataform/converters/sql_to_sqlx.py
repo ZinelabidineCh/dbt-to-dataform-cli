@@ -164,27 +164,48 @@ def _build_config_block(model_config: dict[str, Any], warnings: list[ConversionW
         )
         dataform_type = "view"
 
-    lines = ["config {", f'  type: "{dataform_type}"']
+    props = [f'type: "{dataform_type}"']
 
+    # incremental strategy key (distinct from the assertions.uniqueKey data-quality check below)
     if dataform_type == "incremental" and model_config.get("unique_key"):
         unique_key = model_config["unique_key"]
         keys = unique_key if isinstance(unique_key, list) else [unique_key]
         if len(keys) == 1:
-            lines.append(f'  uniqueKey: "{keys[0]}"')
+            props.append(f'uniqueKey: "{keys[0]}"')
         else:
-            lines.append("  uniqueKey: [" + ", ".join(f'"{k}"' for k in keys) + "]")
+            props.append("uniqueKey: [" + ", ".join(f'"{k}"' for k in keys) + "]")
 
     tags = model_config.get("tags")
     if tags:
         tag_list = tags if isinstance(tags, list) else [tags]
-        lines.append("  tags: [" + ", ".join(f'"{t}"' for t in tag_list) + "]")
+        props.append("tags: [" + ", ".join(f'"{t}"' for t in tag_list) + "]")
 
     schema = model_config.get("schema")
     if schema:
-        lines.append(f'  schema: "{schema}"')
+        props.append(f'schema: "{schema}"')
 
-    lines.append("}")
-    return "\n".join(lines)
+    assertions = model_config.get("assertions")
+    if assertions:
+        props.append(_render_assertions(assertions))
+
+    body = ",\n  ".join(props)
+    return f"config {{\n  {body}\n}}"
+
+
+def _render_assertions(assertions: dict[str, Any]) -> str:
+    inner_props = []
+    unique_key = assertions.get("uniqueKey")
+    if unique_key:
+        keys = unique_key if isinstance(unique_key, list) else [unique_key]
+        inner_props.append("uniqueKey: [" + ", ".join(f'"{k}"' for k in keys) + "]")
+
+    non_null = assertions.get("nonNull")
+    if non_null:
+        cols = non_null if isinstance(non_null, list) else [non_null]
+        inner_props.append("nonNull: [" + ", ".join(f'"{c}"' for c in cols) + "]")
+
+    inner = ",\n    ".join(inner_props)
+    return "assertions: {\n    " + inner + "\n  }"
 
 
 # --- public API -------------------------------------------------------
