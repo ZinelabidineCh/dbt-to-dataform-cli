@@ -1,11 +1,18 @@
 # dbt-to-dataform-cli
 
+**Migrate your dbt project to Dataform (BigQuery) in one command.**
+
 [![CI](https://github.com/ZinelabidineCh/dbt-to-dataform-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/ZinelabidineCh/dbt-to-dataform-cli/actions/workflows/ci.yml)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Convert a [dbt](https://www.getdbt.com/) project into a
-[Dataform](https://cloud.google.com/dataform) (BigQuery) project — from the
-command line.
+[dbt](https://www.getdbt.com/) (data build tool) has become the default way
+to do SQL transformation in a modern ELT pipeline. If your stack runs on
+Google Cloud, [Dataform](https://cloud.google.com/dataform) is BigQuery's
+native equivalent for analytics engineering — the same ideas (version-controlled
+SQL, a dependency graph, built-in tests) without a separate tool to run and
+maintain. dbt-to-dataform-cli automates the mechanical, repetitive part of
+moving a project from one to the other, straight from the command line.
 
 ```bash
 pip install dbt-to-dataform-cli
@@ -17,12 +24,55 @@ writes a Dataform project next to it, plus a migration report telling you
 exactly what was converted automatically and what still needs a manual
 pass.
 
-## Why this exists
+## Why use this
 
-Two similar tools already exist: [`ra_dbt_to_dataform`](https://github.com/)
-(unmaintained since 2024) and `dbt2dataform` (a web app requiring a zip
-upload). Neither is a CLI you can `pip install` and drop into a script,
-Makefile, or CI pipeline. This is.
+- **A real CLI, not a web app.** `pip install` it, run it locally, wire it
+  into a script, a Makefile, or a CI pipeline. Your SQL never leaves your
+  machine.
+- **Nothing is silently dropped.** Anything the converter can't handle
+  (complex Jinja macros, advanced dbt tests, dbt packages) is left in the
+  output wrapped in a clear `MANUAL REVIEW NEEDED` marker and listed in the
+  migration report — you always know exactly what to check by hand.
+- **Validated on a real project.** Every converter is tested end-to-end
+  against [jaffle_shop](https://github.com/dbt-labs/jaffle-shop), dbt Labs'
+  own reference project — not just unit tests on toy snippets.
+- **Actively maintained, with CI.** Lint and the full test suite run
+  across Python 3.9–3.12 on Linux and Windows on every commit; see the
+  badge above.
+
+## Example
+
+A typical dbt staging model:
+
+```sql
+-- models/staging/stg_customers.sql
+{{ config(materialized='view') }}
+
+select
+    id as customer_id,
+    first_name,
+    last_name
+from {{ source('ecom', 'raw_customers') }}
+```
+
+becomes:
+
+```js
+// definitions/staging/stg_customers.sqlx
+config {
+  type: "view"
+}
+
+select
+    id as customer_id,
+    first_name,
+    last_name
+from ${ref("raw_customers")}
+```
+
+— materialization, `ref()`/`source()` calls, and (if declared in
+`schema.yml`) `unique`/`not_null` assertions all translated automatically.
+See [What it converts](#what-it-converts-mvp-scope) below for the full picture.
 
 ## What it converts (MVP scope)
 
@@ -139,6 +189,21 @@ package build + `twine check` to catch anything that would break `pip install`.
 3. ✅ `schema.yml` tests (`unique`, `not_null`) -> assertions
 4. 🚧 Richer migration report (HTML output)
 
+## Contributing
+
+Issues and PRs are welcome. This project is intentionally small in scope,
+so a good place to start is the [Roadmap](#roadmap) above, or any dbt
+project pattern the converters don't handle yet — open an issue with a
+minimal repro. Please add a test alongside any change (see `tests/`) and
+run `pytest` and `ruff check src tests` before opening a PR.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## About
+
+Built by [Zinelabidine Chiguer](https://github.com/ZinelabidineCh) —
+freelance Data Engineer specializing in BigQuery and Dataform on Google
+Cloud. Open to dbt → Dataform migration projects; feel free to reach out
+via GitHub.
