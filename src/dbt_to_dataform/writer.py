@@ -6,5 +6,8 @@ from pathlib import Path
 
 
 def write_text(path: Path, content: str) -> None:
+    # Path.write_text()'s `newline` kwarg only exists from Python 3.10+;
+    # this project supports 3.9, so go through open() directly instead.
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8", newline="\n")
+    with path.open("w", encoding="utf-8", newline="\n") as f:
+        f.write(content)
